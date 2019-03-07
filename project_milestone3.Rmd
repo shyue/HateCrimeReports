@@ -256,18 +256,46 @@ In Milestone 1, you identified your hypothesis for your project question. Please
 
 _Example from the Stanford Open Policing Project_: _Black individuals are more likely to be searched when stopped by the police than are white individuals_
 
-The percentage of media reports on hate crimes for the categories of Race, Sexual Orientation, and Religious Affiliation in NYC in 2017 and 2018 will be different than the actual reports to the NYPD on these categories.
+The reports of each category of hate crime will be dependent on whether the reports are from the NYPD or if they are from media reports, and that the counts for each category will be different.
 
 __q3__ What is the null hypothesis?
 
 _Example_: _Black and White individuals are equally likely to be searched when stopped by the police. In other words, race and being searched are independent of each other_
-The null hypothesis is that for each category of hate crime, there is no difference between the percentage of media reports that involve that category and the percentage of actual hate crime reports of that category.
+
+The null hypothesis is that the reports of each category of hate crime will be independent on whether the reports are from the NYPD or the media.
 
 
 __q4__ Test your hypothesis using the appropriate statistical tests. Points to consider: Are your variables continuous or categorical? If your variables are continuous, are they normally distributed? If one or more of your variables is categorical, how many categories are there?
 
 ```{r}
+#Preparing Counts
+Race_HateCrime <- c(Article_RaceCount, NYPD_RaceCount)
+Religion_HateCrime <- c(Article_ReligionCount, NYPD_ReligionCount)
+SexOri_HateCrime <- c(Article_SexOriCount, NYPD_SexOriCount)
 
+
+#Creating matrixes for each category
+All_matrix = matrix(c(Race_HateCrime, Religion_HateCrime, SexOri_HateCrime), nrow=3, byrow=TRUE)
+rownames(All_matrix) = c('Race', 'Religion', 'SexOri')
+colnames(All_matrix) = c('Media', 'NYPD')
+
+Race_matrix = matrix(c(Race_HateCrime, Religion_HateCrime+SexOri_HateCrime), nrow=2, byrow=TRUE)
+rownames(Race_matrix) = c('Race', 'Other')
+colnames(Race_matrix) = c('Media', 'NYPD')
+
+Religion_matrix = matrix(c(Religion_HateCrime, Race_HateCrime+SexOri_HateCrime), nrow=2, byrow=TRUE)
+rownames(Religion_matrix) = c('Religion', 'Other')
+colnames(Religion_matrix) = c('Media', 'NYPD')
+
+SexOri_matrix = matrix(c(SexOri_HateCrime, Religion_HateCrime+Race_HateCrime), nrow=2, byrow=TRUE)
+rownames(SexOri_matrix) = c('SexOri', 'Other')
+colnames(SexOri_matrix) = c('Media', 'NYPD')
+
+
+chisq.test(All_matrix, correct=FALSE)
+chisq.test(Race_matrix, correct=FALSE)
+chisq.test(Religion_matrix, correct=FALSE)
+chisq.test(SexOri_matrix, correct=FALSE)
 ```
 
 __q5__ In writing, interpret the results of your hypothesis test(s). Move beyond the p-value and where the test is "significant". For example, if you compared means, describe the size of the means in relation to each other; if you use a chi-square test, create a contingency table and describe the relative proportions; if you used regression, interpret the meaning of the intercept and slope(s). Overall, demonstrate that you understand what the test is estimating. 
