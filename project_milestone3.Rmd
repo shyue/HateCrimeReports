@@ -1,0 +1,301 @@
+---
+title: "Psych 10 Project: Milestone 3"
+output: html_document
+---
+
+NOTE: Submit this file as a .Rmd file on Canvas. 
+
+This is Milestone 3 of your project. The goals of Milestone 3 of your project are to:
+
+* Test your hypothesis using the appropriate statistical tests. 
+*	Estimate how large the effect is by using one of the following: effect size, confidence intervals, Bayes factors
+*	Visualize your results, including one figure that summarizes your primary result. 
+*	Interpret your results in writing.
+
+DUE DATE: 3/11 @ 10:30 AM.
+
+# Environment set up 
+
+__q1__ Set up your environment by loading the needed packages and saving the file path(s) to your data as values in your environment.
+```{r}
+#Libaries
+#Load the packages you need here
+
+library(tidyverse)
+library(readxl)
+
+article_data_file <- 'https://raw.githubusercontent.com/googletrends/data/master/Documenting_Hate_latest.csv'
+
+nypd_data_file_2017 <- 'https://raw.githubusercontent.com/shyue/HateCrimeReports/master/nypd2017.csv'
+nypd_data_file_2018 <- 'https://raw.githubusercontent.com/shyue/HateCrimeReports/master/nypd2018.csv'
+
+
+#Files
+# e.g., data_file <- "path"
+```
+
+# Read in your data
+
+__q2__ Read in your data file using the appropriate function. 
+
+```{r}
+article_data <- read_csv(article_data_file)
+nypd_data_2017 <- read_csv(nypd_data_file_2017)
+nypd_data_2018 <- read_csv(nypd_data_file_2018)
+
+```
+
+
+```{r}
+article_data <- article_data %>% 
+  select(City, Title) %>%
+  filter(City == "New York")
+
+set.seed(42)
+```
+
+
+```{r}
+#function for filtering data for category based on keywords
+hatecrime_category <- function(title) {
+  sapply(title, function(title) {
+  race_words <- c(
+    'Arab', 
+    'Asian',
+    'Black',
+    'Hispanic', 'Latino', 'Latina', 'Mexican',
+    'Multi-racial', 'Multiracial',
+    'Native American', 'Native-American',
+    'White', 'Caucasian',
+    'race', 'racism', 'racist', 'immigrant'
+  )
+  
+  religious_words <- c(
+    'Catholic',
+    'Islam', 'Muslim',
+    'Christian',
+    'Jewish', 'antisemit', 
+    'religion', 'religious'
+  )
+  
+  sexorie_words <- c(
+    'Lesbian',
+    'Gay',
+    #'Transgender',
+    'Trans',
+    'LGBTQ',
+    'queer',
+    'homo' #'homophobic', 'homophobia',
+    #'transphobic', 'transphobia'
+  )
+  
+  race_count <- 0
+  religious_count <- 0
+  sexorie_count <- 0
+  
+  #counting occurrences
+  for (word in race_words){
+    race_count = race_count + str_count(tolower(title), tolower(word))
+  }
+  
+  for (word in religious_words){
+    religious_count = religious_count + str_count(tolower(title), tolower(word))
+  }
+  
+  for (word in sexorie_words){
+    sexorie_count = sexorie_count + str_count(tolower(title), tolower(word))
+  }
+  
+  #removing words that are not the maximum number of keywords
+  type <- c("Race", "Sexual Orientation", "Religious Affiliation")
+  
+  if (religious_count < race_count | religious_count < sexorie_count) {
+    type <- type[type != "Religious Affiliation"]
+  }
+  
+  if (race_count < religious_count | race_count < sexorie_count) {
+    type <- type[type != "Race"]
+  }
+  
+  if (sexorie_count < religious_count | race_count > sexorie_count) {
+    type <- type[type != "Sexual Orientation"]
+  }
+
+  if (length(type) == 0 | (sexorie_count==0 & race_count==0 & religious_count==0)){
+    return("None")
+  }
+  #pick random value out of the top (max) choices if there's a tie
+  return(sample(type,1))
+  })}
+```
+
+```{r}
+article_data <- article_data %>%
+  mutate(Category = hatecrime_category(Title)) %>%
+  filter(Category!="None") %>%
+  select(-City, -Title)
+
+```
+
+
+```{r}
+nypd_data <-c()
+for (curr_column in colnames(nypd_data_2017)){
+
+  #Race categories
+  if (curr_column == "ANTI-ARAB" |
+      curr_column == "ANTI-ASIAN" |
+      curr_column == "ANTI-BLACK" |
+      curr_column == "ANTI-HINDU" |
+      curr_column == "ANTI-HISPANIC" |
+      curr_column == "ANTI-OTHER ETHNICITY/NATIONAL ORIGIN/ANCESTRY" |
+      curr_column == "ANTI-WHITE") {
+    #append an observation based on the last row (total row)
+    for (i in 1:as.numeric(nypd_data_2017[nrow(nypd_data_2017),curr_column])){
+      nypd_data <- c(nypd_data, "Race")
+    }
+  }
+  
+  #Sexual Orientation categories
+  if (curr_column == "ANTI-FEMALE HOMOSEXUAL (LESBIAN)" |
+      curr_column == "ANTI-LGBT" |
+      curr_column == "ANTI-MALE HOMOSEXUAL (GAY)" |
+      curr_column == "ANTI-TRANSGENDER") {
+    #append an observation based on the last row (total row)
+    for (i in 1:as.numeric(nypd_data_2017[nrow(nypd_data_2017),curr_column])){
+      nypd_data <- c(nypd_data, "Sexual Orientation")
+    }
+  }
+  
+  #Religion categories
+  if (curr_column == "ANTI-CATHOLIC" |
+      curr_column == "ANTI-ISLAMIC" |
+      curr_column == "ANTI-JEWISH" |
+      curr_column == "ANTI-MULTI-RELIGIOUS GROUPS" |
+      curr_column == "ANTI-RELIGIOUS PRACTICE, GENERALLY") {
+    #append an observation based on the last row (total row)
+    for (i in 1:as.numeric(nypd_data_2017[nrow(nypd_data_2017),curr_column])){
+      nypd_data <- c(nypd_data, "Religious Affiliation")
+    }
+  }
+  
+  
+}
+
+```
+
+
+
+```{r}
+for (curr_column in colnames(nypd_data_2018)){
+
+  #Race categories
+  if (curr_column == "Anti-Arab" |
+      curr_column == "Anti-Asian" |
+      curr_column == "Anti-Black" |
+      curr_column == "Anti-Hispanic" |
+      curr_column == "Anti-Multi-Racial Groups" |
+      curr_column == "Anti-Other Ethnicity/National Origin" |
+      curr_column == "Anti-White") {
+    #append an observation based on the last row (total row)
+    for (i in 1:as.numeric(nypd_data_2018[nrow(nypd_data_2018),curr_column])){
+      nypd_data <- c(nypd_data, "Race")
+    }
+  }
+  
+  #Sexual Orientation categories
+  if (curr_column == "Anti-Female Homosexual (Lesbian)" |
+      curr_column == "Anti-Male Homosexual (Gay)" |
+      curr_column == "Anti-Transgender") {
+    #append an observation based on the last row (total row)
+    for (i in 1:as.numeric(nypd_data_2018[nrow(nypd_data_2018),curr_column])){
+      nypd_data <- c(nypd_data, "Sexual Orientation")
+    }
+  }
+  
+  #Religion categories
+  if (curr_column == "Anti-Catholic" |
+      curr_column == "Anti-Islamic (Muslim)" |
+      curr_column == "Anti-Jewish" |
+      curr_column == "Anti-Mormon" |
+      curr_column == "Anti-Other Christian" |
+      curr_column == "Anti-Other Religion") {
+    #append an observation based on the last row (total row)
+    for (i in 1:as.numeric(nypd_data_2018[nrow(nypd_data_2018),curr_column])){
+      nypd_data <- c(nypd_data, "Religious Affiliation")
+    }
+  }
+  
+  
+}
+```
+
+
+```{r}
+nypd_data <- data.frame("Category" = nypd_data)
+```
+
+```{r}
+nypd_data <- data.frame(table(nypd_data$Category))
+article_data <- data.frame(table(article_data$Category))
+
+NYPD_RaceCount <- (nypd_data %>% filter(Var1=='Race'))$Freq
+NYPD_SexOriCount <- (nypd_data %>% filter(Var1=='Sexual Orientation'))$Freq
+NYPD_ReligionCount <- (nypd_data %>% filter(Var1=='Religious Affiliation'))$Freq
+
+Article_RaceCount <- (article_data %>% filter(Var1=='Race'))$Freq
+Article_SexOriCount <- (article_data %>% filter(Var1=='Sexual Orientation'))$Freq
+Article_ReligionCount <- (article_data %>% filter(Var1=='Religious Affiliation'))$Freq
+```
+
+In Milestone 2, you cleaned your data. Below, copy and paste any chunks of code you used to clean your data for Milestone 2. If you need to perform additional data cleaning as advised by your TA, please do so. 
+
+# Hypothesis testing
+
+In Milestone 1, you identified your hypothesis for your project question. Please restate your hypothesis below (it's okay if it changed _prior_ to hypothesis testing):
+
+_Example from the Stanford Open Policing Project_: _Black individuals are more likely to be searched when stopped by the police than are white individuals_
+
+The percentage of media reports on hate crimes for the categories of Race, Sexual Orientation, and Religious Affiliation in NYC in 2017 and 2018 will be different than the actual reports to the NYPD on these categories.
+
+__q3__ What is the null hypothesis?
+
+_Example_: _Black and White individuals are equally likely to be searched when stopped by the police. In other words, race and being searched are independent of each other_
+The null hypothesis is that for each category of hate crime, there is no difference between the percentage of media reports that involve that category and the percentage of actual hate crime reports of that category.
+
+
+__q4__ Test your hypothesis using the appropriate statistical tests. Points to consider: Are your variables continuous or categorical? If your variables are continuous, are they normally distributed? If one or more of your variables is categorical, how many categories are there?
+
+```{r}
+
+```
+
+__q5__ In writing, interpret the results of your hypothesis test(s). Move beyond the p-value and where the test is "significant". For example, if you compared means, describe the size of the means in relation to each other; if you use a chi-square test, create a contingency table and describe the relative proportions; if you used regression, interpret the meaning of the intercept and slope(s). Overall, demonstrate that you understand what the test is estimating. 
+
+_Example_: _Using a chi-square test, we tested the hypothesis that Black individuals are more likely to be searched when stopped by the police than are white individuals. Specifically, the chi-square test compared the observed proportions of Black and White individuals who were and were not searched to the proportions expected under the null hypothesis that race and being searched are independent. Results of the chi-square test indicated that the data were unlikely under the null hypothesis, X2(df = 1) = 828.3, p < .001. Specifically, White individuals were searched less than expected under the null hypothesis whereas Black individuals were searched more often than expected under the null hypothesis.Therefore, we can reject the null hypothesis that Black and White individuals are equally likely to be searched when stopped by the police._ 
+
+# Effect size 
+
+__q6__ Estimate how large the effect(s) are. Regardless of whether your hypothesis test was "significant", quantify the size of the effect using measure of effect sizes (e.g., odds ratio or standardized residual for chi-square test; strength of the correlation coefficient; standardized mean difference [cohen's d] for comparing means; standardized beta and/or R-squared for linear regression), confidence intervals, and/or Bayes factors. Interpret the the effect size in writing. 
+
+```{r}
+
+```
+
+_Example_: _We computed the odds-ratio for the probability of Black individuals being searched by the police versus the probability of White individuals being searched by the police. Black individuals were 2.59 times more likely to be searched by the police than were White individuals._
+
+__q7__ 
+
+Use `ggplot()` to visualize your results. Include at least one plot that graphically depicts the primary result of your hypothesis test. Show the variability in the data: if you have a categorical variable, use a boxplot or violin plot; if you have continuous variables, show both the scatter plot (geom_point) and the appropriate trendline. 
+
+Make your primary plot "presentation quality": 1) Provide a title that describes the main take-away of the plot (i.e., Black individuals are disproportionately searched by the police _NOT_ Proportions of Black and White individual searched by the police), 2) Label your axes, 3) Adjust the axis text if necessary by changing the "breaks" using one of the scale_ functions (e.g., scale_x_continuous, scale_x_discrete), 4) if one of your variables is categorical, order the data logically using fct_reorder(), 5) Consider adding reference lines using geom_vline or geom_hline. 
+
+```{r}
+
+```
+
+
+__Team member contributions__ Briefly describe each member's contribution below. 
+
+
+
