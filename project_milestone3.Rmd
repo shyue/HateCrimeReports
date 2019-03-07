@@ -1,6 +1,7 @@
 ---
 title: "Psych 10 Project: Milestone 3"
 output: html_document
+author: Daniel Chen, Adamari Alamillo, and Marilyn Frank
 ---
 
 NOTE: Submit this file as a .Rmd file on Canvas. 
@@ -296,21 +297,45 @@ chisq.test(All_matrix, correct=FALSE)
 chisq.test(Race_matrix, correct=FALSE)
 chisq.test(Religion_matrix, correct=FALSE)
 chisq.test(SexOri_matrix, correct=FALSE)
+Race_matrix
+SexOri_matrix
+Religion_matrix
 ```
 
 __q5__ In writing, interpret the results of your hypothesis test(s). Move beyond the p-value and where the test is "significant". For example, if you compared means, describe the size of the means in relation to each other; if you use a chi-square test, create a contingency table and describe the relative proportions; if you used regression, interpret the meaning of the intercept and slope(s). Overall, demonstrate that you understand what the test is estimating. 
 
 _Example_: _Using a chi-square test, we tested the hypothesis that Black individuals are more likely to be searched when stopped by the police than are white individuals. Specifically, the chi-square test compared the observed proportions of Black and White individuals who were and were not searched to the proportions expected under the null hypothesis that race and being searched are independent. Results of the chi-square test indicated that the data were unlikely under the null hypothesis, X2(df = 1) = 828.3, p < .001. Specifically, White individuals were searched less than expected under the null hypothesis whereas Black individuals were searched more often than expected under the null hypothesis.Therefore, we can reject the null hypothesis that Black and White individuals are equally likely to be searched when stopped by the police._ 
 
+Using a chi-square test, we tested whether the reports of each category of hate crime would depend on whether it was a Media report or a report to the NYPD. We used a chi-square test to compare the counts of each hate crime group under each type of report (e.g. race hate crime vs other hate crime under media reports and nypd reports) to the expected counts under the null hypothesis that hate crime and report type are independent. Results of the test indicated that it was unlnikely that race, religious, and sexual orientation related hate crimes were independent of type of reports (Race:28.399(df=1), Religion:119.44(df=1), Sexual Orientation:46.39(df=1), p<0.001 for all three tests). Specifically, the media covered race and sexual orientation related hate crimes more than actual NYPD reports, while also underreporting the number of religion related hate crimes. Therefore, we reject the null hypothesis that the counts of each hate crime category are independent of the type of report (either media or NYPD)
+
 # Effect size 
 
 __q6__ Estimate how large the effect(s) are. Regardless of whether your hypothesis test was "significant", quantify the size of the effect using measure of effect sizes (e.g., odds ratio or standardized residual for chi-square test; strength of the correlation coefficient; standardized mean difference [cohen's d] for comparing means; standardized beta and/or R-squared for linear regression), confidence intervals, and/or Bayes factors. Interpret the the effect size in writing. 
 
 ```{r}
+odds_race_media = Article_RaceCount/(Article_ReligionCount+Article_SexOriCount)
+odds_race_nypd = NYPD_RaceCount/(NYPD_ReligionCount+NYPD_SexOriCount)
+odds_race = odds_race_media/odds_race_nypd
+odds_race
 
+odds_religion_media = Article_ReligionCount/(Article_RaceCount+Article_SexOriCount)
+odds_religion_nypd = NYPD_ReligionCount/(NYPD_RaceCount+NYPD_SexOriCount)
+odds_religion = odds_religion_media/odds_religion_nypd
+odds_religion
+
+odds_sexori_media = Article_SexOriCount/(Article_RaceCount+Article_ReligionCount)
+odds_sexori_nypd = NYPD_SexOriCount/(NYPD_RaceCount+NYPD_ReligionCount)
+odds_sexori = odds_sexori_media/odds_sexori_nypd
+odds_sexori
 ```
 
 _Example_: _We computed the odds-ratio for the probability of Black individuals being searched by the police versus the probability of White individuals being searched by the police. Black individuals were 2.59 times more likely to be searched by the police than were White individuals._
+
+We computed the odds-ratio for the probability of race hate crimes being reported in the media versus the probability of race hate crimes being reported to the NYPD, and the media was 1.9 times more likely to report race hate crimes
+
+We computed the odds-ratio for the probability of religious hate crimes being reported in the media versus the probability of religious hate crimes being reported to the NYPD, and the media was 0.268 times as likely to report  religious hate crimes
+
+We computed the odds-ratio for the probability of sexual orientation hate crimes being reported in the media versus the probability of sexual orientation hate crimes being reported to the NYPD, and the media was 2.5 times more likely to report sexual orientation hate crimes
 
 __q7__ 
 
