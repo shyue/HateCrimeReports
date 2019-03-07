@@ -255,15 +255,12 @@ In Milestone 2, you cleaned your data. Below, copy and paste any chunks of code 
 
 In Milestone 1, you identified your hypothesis for your project question. Please restate your hypothesis below (it's okay if it changed _prior_ to hypothesis testing):
 
-_Example from the Stanford Open Policing Project_: _Black individuals are more likely to be searched when stopped by the police than are white individuals_
 
-The reports of each category of hate crime will be dependent on whether the reports are from the NYPD or if they are from media reports, and that the counts for each category will be different.
+_The reports of each category of hate crime will be dependent on whether the reports are from the NYPD or if they are from media reports, and that the counts for each category will be different._
 
 __q3__ What is the null hypothesis?
 
-_Example_: _Black and White individuals are equally likely to be searched when stopped by the police. In other words, race and being searched are independent of each other_
-
-The null hypothesis is that the reports of each category of hate crime will be independent on whether the reports are from the NYPD or the media.
+_The null hypothesis is that the reports of each category of hate crime will be independent on whether the reports are from the NYPD or the media._
 
 
 __q4__ Test your hypothesis using the appropriate statistical tests. Points to consider: Are your variables continuous or categorical? If your variables are continuous, are they normally distributed? If one or more of your variables is categorical, how many categories are there?
@@ -304,9 +301,8 @@ Religion_matrix
 
 __q5__ In writing, interpret the results of your hypothesis test(s). Move beyond the p-value and where the test is "significant". For example, if you compared means, describe the size of the means in relation to each other; if you use a chi-square test, create a contingency table and describe the relative proportions; if you used regression, interpret the meaning of the intercept and slope(s). Overall, demonstrate that you understand what the test is estimating. 
 
-_Example_: _Using a chi-square test, we tested the hypothesis that Black individuals are more likely to be searched when stopped by the police than are white individuals. Specifically, the chi-square test compared the observed proportions of Black and White individuals who were and were not searched to the proportions expected under the null hypothesis that race and being searched are independent. Results of the chi-square test indicated that the data were unlikely under the null hypothesis, X2(df = 1) = 828.3, p < .001. Specifically, White individuals were searched less than expected under the null hypothesis whereas Black individuals were searched more often than expected under the null hypothesis.Therefore, we can reject the null hypothesis that Black and White individuals are equally likely to be searched when stopped by the police._ 
 
-Using a chi-square test, we tested whether the reports of each category of hate crime would depend on whether it was a Media report or a report to the NYPD. We used a chi-square test to compare the counts of each hate crime group under each type of report (e.g. race hate crime vs other hate crime under media reports and nypd reports) to the expected counts under the null hypothesis that hate crime and report type are independent. Results of the test indicated that it was unlnikely that race, religious, and sexual orientation related hate crimes were independent of type of reports (Race:28.399(df=1), Religion:119.44(df=1), Sexual Orientation:46.39(df=1), p<0.001 for all three tests). Specifically, the media covered race and sexual orientation related hate crimes more than actual NYPD reports, while also underreporting the number of religion related hate crimes. Therefore, we reject the null hypothesis that the counts of each hate crime category are independent of the type of report (either media or NYPD)
+_Using a chi-square test, we tested whether the reports of each category of hate crime would depend on whether it was a Media report or a report to the NYPD. We used a chi-square test to compare the counts of each hate crime group under each type of report (e.g. race hate crime vs other hate crime under media reports and nypd reports) to the expected counts under the null hypothesis that hate crime and report type are independent. Results of the test indicated that it was unlnikely that race, religious, and sexual orientation related hate crimes were independent of type of reports (Race:28.399(df=1), Religion:119.44(df=1), Sexual Orientation:46.39(df=1), p<0.001 for all three tests). Specifically, the media covered race and sexual orientation related hate crimes more than actual NYPD reports, while also underreporting the number of religion related hate crimes. Therefore, we reject the null hypothesis that the counts of each hate crime category are independent of the type of report (either media or NYPD)_
 
 # Effect size 
 
@@ -329,13 +325,11 @@ odds_sexori = odds_sexori_media/odds_sexori_nypd
 odds_sexori
 ```
 
-_Example_: _We computed the odds-ratio for the probability of Black individuals being searched by the police versus the probability of White individuals being searched by the police. Black individuals were 2.59 times more likely to be searched by the police than were White individuals._
+_We computed the odds-ratio for the probability of race hate crimes being reported in the media versus the probability of race hate crimes being reported to the NYPD, and the media was 1.9 times more likely to report race hate crimes_
 
-We computed the odds-ratio for the probability of race hate crimes being reported in the media versus the probability of race hate crimes being reported to the NYPD, and the media was 1.9 times more likely to report race hate crimes
+_We computed the odds-ratio for the probability of religious hate crimes being reported in the media versus the probability of religious hate crimes being reported to the NYPD, and the media was 0.268 times as likely to report  religious hate crimes_
 
-We computed the odds-ratio for the probability of religious hate crimes being reported in the media versus the probability of religious hate crimes being reported to the NYPD, and the media was 0.268 times as likely to report  religious hate crimes
-
-We computed the odds-ratio for the probability of sexual orientation hate crimes being reported in the media versus the probability of sexual orientation hate crimes being reported to the NYPD, and the media was 2.5 times more likely to report sexual orientation hate crimes
+_We computed the odds-ratio for the probability of sexual orientation hate crimes being reported in the media versus the probability of sexual orientation hate crimes being reported to the NYPD, and the media was 2.5 times more likely to report sexual orientation hate crimes_
 
 __q7__ 
 
@@ -344,11 +338,18 @@ Use `ggplot()` to visualize your results. Include at least one plot that graphic
 Make your primary plot "presentation quality": 1) Provide a title that describes the main take-away of the plot (i.e., Black individuals are disproportionately searched by the police _NOT_ Proportions of Black and White individual searched by the police), 2) Label your axes, 3) Adjust the axis text if necessary by changing the "breaks" using one of the scale_ functions (e.g., scale_x_continuous, scale_x_discrete), 4) if one of your variables is categorical, order the data logically using fct_reorder(), 5) Consider adding reference lines using geom_vline or geom_hline. 
 
 ```{r}
+graph_counts = c(Article_RaceCount, Article_ReligionCount, Article_SexOriCount, NYPD_RaceCount, NYPD_ReligionCount, NYPD_SexOriCount)
+graph_hatetype = c('Race', 'Religion', 'Sexual Orientation', 'Race', 'Religion', 'Sexual Orientation')
+graph_mediatype = c('Media', 'Media', 'Media', 'NYPD', 'NYPD', 'NYPD')
+graph_df <- data.frame(graph_counts, graph_hatetype, graph_mediatype)
+
+graph_df %>%
+  ggplot() + aes(x=graph_hatetype, y=graph_counts) + geom_bar(aes(fill=graph_mediatype), stat="identity", position="dodge") +
+  labs(x="Type of Hate Crime", y="Number of reports", title="Media Reports More Race and Sexual Orientation Hate Crimes, \nbut Less Religious Hate Crimes Compared to NYPD Reports", fill="Report Type")
 
 ```
 
 
 __Team member contributions__ Briefly describe each member's contribution below. 
-
-
+We all met together and worked on the same computer at the same time. Thus, our contributions were all equal.
 
