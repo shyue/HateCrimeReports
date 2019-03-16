@@ -1,6 +1,6 @@
 ---
 title: "Psych 10 Project: Milestone 3"
-authors:
+author: Daniel Chen, Adamari Alamillo, and Marilyn Frank
 output: html_document
 ---
 
