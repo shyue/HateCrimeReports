@@ -1,0 +1,403 @@
+---
+title: "Psych 10 Project: Milestone 3"
+authors:
+output: html_document
+---
+
+NOTE: Submit this file as a .Rmd file on Canvas. 
+
+This is the final write-up of your project. The goals of the final write-up are to produce a polished and coherent R markdown report, free of coding errors/redundant code, with clearly written explanations of your research question, hypotheses, data cleaning steps, and results. __The write-up and code should be intelligible to an outside reader who is unfamiliar with your prior work on the project.__ Before submitting, review all written responses for clarity and use spell check!
+
+Please refer back to milestones 1-3 when completing each of the steps below. 
+
+We will assign a grade to the final write-up based on the overall quality of your project and __your responsiveness to the feedback__ we provided on milestones 1-3. -5 points will be deducted for submitting incorrectly, -1 for failing to load libraries, -1 for errors in code. We may award extra credit to teams with particularly well-motivated, clear, and polished final projects. 
+
+
+# Environment set up 
+```{r}
+#Libaries
+#Load the packages you need here
+library(tidyverse)
+library(readxl)
+
+#Files
+article_data_file <- 'https://raw.githubusercontent.com/googletrends/data/master/Documenting_Hate_latest.csv'
+nypd_data_file_2017 <- 'https://raw.githubusercontent.com/shyue/HateCrimeReports/master/nypd2017.csv'
+nypd_data_file_2018 <- 'https://raw.githubusercontent.com/shyue/HateCrimeReports/master/nypd2018.csv'
+```
+
+
+# Research question and hypothesis.
+As in milestone 1, describe your research question and the motivation for this question, providing at least one example of how answering this question may be useful in the real world. As in milestones 1 and 3, state your hypothesis and the corresponding null hypothesis. Incorporate relevant feedback you received from your TA. 
+
+The problem we want to look at is to see if reports of hate-crime in the media is 
+different than actual hate-crime rates. We will look at this for various groups
+with different race, religious affiliation, and sexual orientation, and compare
+how much these groups are discussed in the media in relation to each other.
+
+This question is important because research has shown that media doesn't always
+represent actual situations factually, and that media can also cause biases on
+what it reports. This has been shown empirically in various psychological papers,
+and is grounded in fact.
+
+The importance for understanding whether hate-crime media articles differ 
+from actual hate-crime rates is important because differences in media reports
+could cause various biases in readers, which could have downstream effects
+such as racial bias, further hate-crimes, and many other possibilities. Therefore,
+it is important to see whether our perceptions from media are the same as the
+actual situation of hate-crime rates, since our perceptions will shape our actions.
+As an example, people who are less aware of religious hate crimes if they are covered
+less in the media may not stand in solidarity with victims of religious hate crimes,
+and under-support people in need.
+
+Our hypothesis is that the reports of each category of hate crime will be dependent on whether the reports are from the NYPD or if they are from media reports, and that the counts for each category will be different.
+
+Our corresponding null hypothesis is that the reports of each category of hate crime will be independent on whether the reports are from the NYPD or the media.
+
+
+# Data cleaning and wrangling.
+Read in your data. As in milestone 2, perform the necessary data cleaning and wrangling to make your data appropriate for your analysis. In a single paragraph, justify the steps you took to clean your data. Incorporate relevant feedback you received from your TA. 
+
+```{r}
+article_data <- read_csv(article_data_file)
+nypd_data_2017 <- read_csv(nypd_data_file_2017)
+nypd_data_2018 <- read_csv(nypd_data_file_2018)
+
+```
+
+```{r}
+article_data <- article_data %>% 
+  select(City, Title) %>%
+  filter(City == "New York")
+
+set.seed(42)
+```
+
+```{r}
+#function for filtering data for category based on keywords
+hatecrime_category <- function(title) {
+  sapply(title, function(title) {
+  race_words <- c(
+    'Arab', 
+    'Asian',
+    'Black',
+    'Hispanic', 'Latino', 'Latina', 'Mexican',
+    'Multi-racial', 'Multiracial',
+    'Native American', 'Native-American',
+    'White', 'Caucasian',
+    'race', 'racism', 'racist', 'immigrant'
+  )
+  
+  religious_words <- c(
+    'Catholic',
+    'Islam', 'Muslim',
+    'Christian',
+    'Jewish', 'antisemit', 
+    'religion', 'religious'
+  )
+  
+  sexorie_words <- c(
+    'Lesbian',
+    'Gay',
+    #'Transgender',
+    'Trans',
+    'LGBTQ',
+    'queer',
+    'homo' #'homophobic', 'homophobia',
+    #'transphobic', 'transphobia'
+  )
+  
+  race_count <- 0
+  religious_count <- 0
+  sexorie_count <- 0
+  
+  #counting occurrences
+  for (word in race_words){
+    race_count = race_count + str_count(tolower(title), tolower(word))
+  }
+  
+  for (word in religious_words){
+    religious_count = religious_count + str_count(tolower(title), tolower(word))
+  }
+  
+  for (word in sexorie_words){
+    sexorie_count = sexorie_count + str_count(tolower(title), tolower(word))
+  }
+  
+  #removing words that are not the maximum number of keywords
+  type <- c("Race", "Sexual Orientation", "Religious Affiliation")
+  
+  if (religious_count < race_count | religious_count < sexorie_count) {
+    type <- type[type != "Religious Affiliation"]
+  }
+  
+  if (race_count < religious_count | race_count < sexorie_count) {
+    type <- type[type != "Race"]
+  }
+  
+  if (sexorie_count < religious_count | race_count > sexorie_count) {
+    type <- type[type != "Sexual Orientation"]
+  }
+
+  if (length(type) == 0 | (sexorie_count==0 & race_count==0 & religious_count==0)){
+    return("None")
+  }
+  #pick random value out of the top (max) choices if there's a tie
+  return(sample(type,1))
+  })}
+```
+
+```{r}
+article_data <- article_data %>%
+  mutate(Category = hatecrime_category(Title)) %>%
+  filter(Category!="None") %>%
+  select(-City, -Title)
+
+```
+
+```{r}
+nypd_data <-c()
+for (curr_column in colnames(nypd_data_2017)){
+
+  #Race categories
+  if (curr_column == "ANTI-ARAB" |
+      curr_column == "ANTI-ASIAN" |
+      curr_column == "ANTI-BLACK" |
+      curr_column == "ANTI-HINDU" |
+      curr_column == "ANTI-HISPANIC" |
+      curr_column == "ANTI-OTHER ETHNICITY/NATIONAL ORIGIN/ANCESTRY" |
+      curr_column == "ANTI-WHITE") {
+    #append an observation based on the last row (total row)
+    for (i in 1:as.numeric(nypd_data_2017[nrow(nypd_data_2017),curr_column])){
+      nypd_data <- c(nypd_data, "Race")
+    }
+  }
+  
+  #Sexual Orientation categories
+  if (curr_column == "ANTI-FEMALE HOMOSEXUAL (LESBIAN)" |
+      curr_column == "ANTI-LGBT" |
+      curr_column == "ANTI-MALE HOMOSEXUAL (GAY)" |
+      curr_column == "ANTI-TRANSGENDER") {
+    #append an observation based on the last row (total row)
+    for (i in 1:as.numeric(nypd_data_2017[nrow(nypd_data_2017),curr_column])){
+      nypd_data <- c(nypd_data, "Sexual Orientation")
+    }
+  }
+  
+  #Religion categories
+  if (curr_column == "ANTI-CATHOLIC" |
+      curr_column == "ANTI-ISLAMIC" |
+      curr_column == "ANTI-JEWISH" |
+      curr_column == "ANTI-MULTI-RELIGIOUS GROUPS" |
+      curr_column == "ANTI-RELIGIOUS PRACTICE, GENERALLY") {
+    #append an observation based on the last row (total row)
+    for (i in 1:as.numeric(nypd_data_2017[nrow(nypd_data_2017),curr_column])){
+      nypd_data <- c(nypd_data, "Religious Affiliation")
+    }
+  }
+  
+  
+}
+
+```
+
+```{r}
+for (curr_column in colnames(nypd_data_2018)){
+
+  #Race categories
+  if (curr_column == "Anti-Arab" |
+      curr_column == "Anti-Asian" |
+      curr_column == "Anti-Black" |
+      curr_column == "Anti-Hispanic" |
+      curr_column == "Anti-Multi-Racial Groups" |
+      curr_column == "Anti-Other Ethnicity/National Origin" |
+      curr_column == "Anti-White") {
+    #append an observation based on the last row (total row)
+    for (i in 1:as.numeric(nypd_data_2018[nrow(nypd_data_2018),curr_column])){
+      nypd_data <- c(nypd_data, "Race")
+    }
+  }
+  
+  #Sexual Orientation categories
+  if (curr_column == "Anti-Female Homosexual (Lesbian)" |
+      curr_column == "Anti-Male Homosexual (Gay)" |
+      curr_column == "Anti-Transgender") {
+    #append an observation based on the last row (total row)
+    for (i in 1:as.numeric(nypd_data_2018[nrow(nypd_data_2018),curr_column])){
+      nypd_data <- c(nypd_data, "Sexual Orientation")
+    }
+  }
+  
+  #Religion categories
+  if (curr_column == "Anti-Catholic" |
+      curr_column == "Anti-Islamic (Muslim)" |
+      curr_column == "Anti-Jewish" |
+      curr_column == "Anti-Mormon" |
+      curr_column == "Anti-Other Christian" |
+      curr_column == "Anti-Other Religion") {
+    #append an observation based on the last row (total row)
+    for (i in 1:as.numeric(nypd_data_2018[nrow(nypd_data_2018),curr_column])){
+      nypd_data <- c(nypd_data, "Religious Affiliation")
+    }
+  }
+  
+  
+}
+```
+
+```{r}
+nypd_data <- data.frame("Category" = nypd_data)
+```
+
+```{r}
+nypd_data <- data.frame(table(nypd_data$Category))
+article_data <- data.frame(table(article_data$Category))
+
+NYPD_RaceCount <- (nypd_data %>% filter(Var1=='Race'))$Freq
+NYPD_SexOriCount <- (nypd_data %>% filter(Var1=='Sexual Orientation'))$Freq
+NYPD_ReligionCount <- (nypd_data %>% filter(Var1=='Religious Affiliation'))$Freq
+
+Article_RaceCount <- (article_data %>% filter(Var1=='Race'))$Freq
+Article_SexOriCount <- (article_data %>% filter(Var1=='Sexual Orientation'))$Freq
+Article_ReligionCount <- (article_data %>% filter(Var1=='Religious Affiliation'))$Freq
+```
+
+We had to parse through data both from news articles as well as for data from actual police reports. For the news articles, we filtered out articles from New York City (since we were only interested in studying NYC for now) and the titles of the articles. In order to categorize each article, we filtered the titles for specific keywords related to religious, sexual orientation, and race based hate crimes. We then kept the Category and dropped the other columns, since we just cared about the category of hate crime for each article. We also did filteirng on the official NYPD reports of hate crimes. We had to manually combine the counts of reports of sub-categories (such as putting 'Anti-Catholic' into religious hate crimes) in order to get official counts of the categories we were interested in. We also needed to do this separately for 2017 and 2018, since different sub-categories were used.
+
+# Data summary and distributions
+Summarize the variables you will use to test your hypothesis by calculating means, standard deviations, and/or frequencies. If you have a grouping variable, provide summary statistics by group. Where appropriate, provide histograms to show the distribution of your data. For the final write-up, you _do not need_ to provide written explanations for these steps. Incorporate relevant feedback you received from your TA. 
+
+```{r}
+#Since we opted for counts of hate crimes, we can't calculate means, std deviatoins, but display the frequencies here:
+
+print("Count of NYPD reports of Race-Based Hate Crimes:")
+NYPD_RaceCount
+
+print("Count of NYPD reports of Religion-Based Hate Crimes:")
+NYPD_ReligionCount
+
+print("Count of NYPD reports of Sexual Orientation-Based Hate Crimes:")
+NYPD_SexOriCount
+
+print("Count of media reports of Race-Based Hate Crimes:")
+Article_RaceCount
+
+print("Count of media reports of Religion-Based Hate Crimes:")
+Article_ReligionCount
+
+print("Count of media reports of Sexual Orientation-Based Hate Crimes:")
+Article_SexOriCount
+```
+
+
+# Hypothesis testing and effect size estimation
+As in milestone 3, test your primary hypothesis and calculate effect sizes. If desired, perform additional exploratory analyses. In writing, state the statistical test(s) you are using to test your hypothesis, describe the results of your hypothesis test(s), and evaluate the effect sizes of your results. Incorporate relevant feedback you received from your TA. 
+
+```{r}
+#Preparing Counts
+Race_HateCrime <- c(Article_RaceCount, NYPD_RaceCount)
+Religion_HateCrime <- c(Article_ReligionCount, NYPD_ReligionCount)
+SexOri_HateCrime <- c(Article_SexOriCount, NYPD_SexOriCount)
+
+
+#Creating matrixes for each category
+All_matrix = matrix(c(Race_HateCrime, Religion_HateCrime, SexOri_HateCrime), nrow=3, byrow=TRUE)
+rownames(All_matrix) = c('Race', 'Religion', 'SexOri')
+colnames(All_matrix) = c('Media', 'NYPD')
+
+Race_matrix = matrix(c(Race_HateCrime, Religion_HateCrime+SexOri_HateCrime), nrow=2, byrow=TRUE)
+rownames(Race_matrix) = c('Race', 'Other')
+colnames(Race_matrix) = c('Media', 'NYPD')
+
+Religion_matrix = matrix(c(Religion_HateCrime, Race_HateCrime+SexOri_HateCrime), nrow=2, byrow=TRUE)
+rownames(Religion_matrix) = c('Religion', 'Other')
+colnames(Religion_matrix) = c('Media', 'NYPD')
+
+SexOri_matrix = matrix(c(SexOri_HateCrime, Religion_HateCrime+Race_HateCrime), nrow=2, byrow=TRUE)
+rownames(SexOri_matrix) = c('SexOri', 'Other')
+colnames(SexOri_matrix) = c('Media', 'NYPD')
+
+
+chisq.test(All_matrix, correct=FALSE)
+chisq.test(Race_matrix, correct=FALSE)
+chisq.test(Religion_matrix, correct=FALSE)
+chisq.test(SexOri_matrix, correct=FALSE)
+#Race_matrix
+#SexOri_matrix
+#Religion_matrix
+```
+
+Using a chi-square test, we tested whether the reports of each category of hate crime would depend on whether it was a Media report or a report to the NYPD. We used a chi-square test to compare the counts of each hate crime group under each type of report (e.g. race hate crime vs other hate crime under media reports and nypd reports) to the expected counts under the null hypothesis that hate crime and report type are independent. Results of the test indicated that it was unlnikely that race, religious, and sexual orientation related hate crimes were independent of type of reports (Race:28.399(df=1), Religion:119.44(df=1), Sexual Orientation:46.39(df=1), p<0.001 for all three tests). Specifically, the media covered race and sexual orientation related hate crimes more than actual NYPD reports, while also underreporting the number of religion related hate crimes. Therefore, we reject the null hypothesis that the counts of each hate crime category are independent of the type of report (either media or NYPD)
+
+```{r}
+odds_race_media = Article_RaceCount/(Article_ReligionCount+Article_SexOriCount)
+odds_race_nypd = NYPD_RaceCount/(NYPD_ReligionCount+NYPD_SexOriCount)
+odds_race = odds_race_media/odds_race_nypd
+odds_race
+
+odds_religion_media = Article_ReligionCount/(Article_RaceCount+Article_SexOriCount)
+odds_religion_nypd = NYPD_ReligionCount/(NYPD_RaceCount+NYPD_SexOriCount)
+odds_religion = odds_religion_media/odds_religion_nypd
+odds_religion
+
+odds_sexori_media = Article_SexOriCount/(Article_RaceCount+Article_ReligionCount)
+odds_sexori_nypd = NYPD_SexOriCount/(NYPD_RaceCount+NYPD_ReligionCount)
+odds_sexori = odds_sexori_media/odds_sexori_nypd
+odds_sexori
+```
+
+We computed the odds-ratio for the probability of race hate crimes being reported in the media versus the probability of race hate crimes being reported to the NYPD, and the media was 1.9 times more likely to report race hate crimes
+
+We computed the odds-ratio for the probability of religious hate crimes being reported in the media versus the probability of religious hate crimes being reported to the NYPD, and the media was 0.268 times as likely to report  religious hate crimes
+
+We computed the odds-ratio for the probability of sexual orientation hate crimes being reported in the media versus the probability of sexual orientation hate crimes being reported to the NYPD, and the media was 2.5 times more likely to report sexual orientation hate crimes
+
+
+# Visualization
+Use `ggplot()` to visualize your results. As in milestone 3, include at least one plot that graphically depicts the primary result of your hypothesis test. Make this plot "presentation quality" (see milestone 3 instructions). Incorporate relevant feedback you received from your TA. 
+
+```{r}
+graph_counts = c(Article_RaceCount, Article_ReligionCount, Article_SexOriCount, NYPD_RaceCount, NYPD_ReligionCount, NYPD_SexOriCount)
+graph_hatetype = c('Race', 'Religion', 'Sexual Orientation', 'Race', 'Religion', 'Sexual Orientation')
+graph_mediatype = c('Media', 'Media', 'Media', 'NYPD', 'NYPD', 'NYPD')
+graph_df <- data.frame(graph_counts, graph_hatetype, graph_mediatype)
+
+graph_df %>%
+  ggplot() + aes(x=graph_hatetype, y=graph_counts) + geom_bar(aes(fill=graph_mediatype), stat="identity", position="dodge") +
+  labs(x="Type of Hate Crime", y="Number of reports", title="Media Reports More Counts of Race and Sexual Orientation Hate Crimes, \nbut Less Counts of Religious Hate Crimes Compared to NYPD Reports", fill="Report Type")
+
+```
+
+```{r}
+graph_df <- graph_df %>%
+  group_by(graph_mediatype) %>%
+  mutate(graph_prop=graph_counts/sum(graph_counts))
+
+graph_df %>%
+  ggplot() + aes(x=graph_hatetype, y=graph_prop) + geom_bar(aes(fill=graph_mediatype), stat="identity", position="dodge") +
+  labs(x="Type of Hate Crime", y="Proportion of reports (within report type)", title="Media Reports More Proportions of Race and Sexual Orientation Hate Crimes, \nbut Less Proportion of Religious Hate Crimes Compared to NYPD Reports", fill="Report Type")
+```
+
+# Discussion, limitations, future directions
+As in milestone 3, interpret your results in relation to your research question. State explcitly whether your results support your hypothesis. What conclusions can you draw about the answer to your research question? Incorporate relevant feedback you received from your TA. 
+
+In addition, discuss the limitations of your project and dataset and how these limitations may affect your interpretation and conclusions. Based on your results, provide an example of at least one future direction for research in this area (e.g., an additional research question or avenue for analysis that would further understanding in this area).
+
+Our data was extremely unlikely under the null hypothesis that there was no difference between media reports and official reports to the NYPD. Thus, we reject our null hypothesis in favor of our alternative hypothesis that suggests that media reports of race-, religion-, and sexual orientation-based hate crimes are different than that of official NYPD reports. Additionally, our odds ratio suggests that the media are more likely to cover race and sexual orientation based hate crimes, and are less likely to cover religion-based hate crimes. Thus, it suggests that, as per our guesses in the research question, the media does cover hate crimes differently than actual reports.
+
+There were a couple limitations of our analysis. First of all, we used our own set of keywords to filter in order to categorize each article. However, our analysis may be more exact if we added more extensive methods to create keywords (instead of brainstorming it), or perhaps used NLP methods in order to have comprehension of the articles in order to determine exactly what subject is being discussed, instead of using keyword-based methods. By not using NLP methods, our data might be incorrect, since it may just be picking up on other peripheral keywords, when the actual core subject is of something else. However, we assume that these special cases are rare, so it should not impact our results too much. Another limitation that these articles were from Google News, which is a subset of the media population. While this subset is likely to be representative, it remains to be rigorously tested whether this holds for media as a whole. If Google News is not actually representative of media, then it may cause our results to be skewed in ways that may not generalize to other media outlets.
+
+Future research could look at different media outlets to see how they vary in reports. Currently, we use articles from Google News since it aggregates various news sites - but in the future, it would be interesting to compare various articles from specific news sites - such as news from Fox news or from CNN. Future research could create datasets from these news stations, and perform the same analysis that we performed. Additionally, it would be interesting to track the temporal changes in reporting. We rely on relatively recent data (2017-2018), but future research could also track how these media reporting attitudes as well as actual changes in hate crime rates have evolved from the past. As an example, future research could look back every 10 years to see coverage of hate crimes, and different results are likely (e.g. sexual orientation hate crimes would probably be undercovered in the media in the past).
+
+# Responses to TA feedback
+Briefly, explain how you incorporated into your final write-up the feedback you received from your TA on milestones 1-3. 
+
+Some changes we made from previous milestones:
+-we used proportions for the graphs. As pointed out by Tiffany, the counts for media and NYPD reports differed, so in our second graph we include not counts, but proportions in order to show that they represent the same differences.
+-we used github links in order to more easily parse the data, without having to awkwardly email around Excel spreadsheets
+-instead of using bootstrapping, we switched to using a chisquare test. Before, we would generate distributions - however, since we only have counts, it makes more sense to use categorical-based tests such as chisquare instead of trying to simulate a continuous variable. Thus, for our final write-up we used chisquare instead of bootstrapping.
+
+__Team member contributions__ Briefly describe each member's contribution below. 
+For every milestone, we got together in Old Union and worked on it together. Thus, our contributions were equal, because for each section, we worked through how to do each line of code together.
+
+

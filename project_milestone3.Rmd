@@ -351,5 +351,5 @@ graph_df %>%
 
 
 __Team member contributions__ Briefly describe each member's contribution below. 
-We all met together and worked on the same computer at the same time. Thus, our contributions were all equal.
+We all met together and worked on the same computer at the same time. Thus, our contributions were all equal. 
 
